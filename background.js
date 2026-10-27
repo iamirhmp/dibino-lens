@@ -49,6 +49,7 @@ async function handle(msg, sender) {
     case 'capture':     return capture(tab);
     case 'main-detect': return mainDetect(tab.id);
     case 'fetch':       return fetchAsset(msg.url, msg.maxBytes || 8e6, !!msg.asText);
+    case 'make-frame':  return makeFrame(tab.id, msg);
     case 'perm-check':  return { ok: true, granted: await chrome.permissions.contains({ origins: msg.origins }) };
     case 'perm-open':   return openGrant(tab.id, msg.origins);
     default:            return { ok: false, error: 'unknown message' };
@@ -126,4 +127,26 @@ async function openGrant(tabId, origins) {
   const url = chrome.runtime.getURL('grant.html') + '?tab=' + tabId + '&o=' + encodeURIComponent(JSON.stringify(origins || []));
   await chrome.windows.create({ url, type: 'popup', width: 460, height: 460 });
   return { ok: true };
+}
+
+
+/* builds the responsive-view overlay + iframe inside the page itself (see capture.js) */
+function mkFrameMain(width, left, height, src) {
+  const doc = document;
+  const overlay = doc.createElement('div');
+  overlay.setAttribute('data-dibino-lens-overlay', '');
+  overlay.style.cssText = 'all:initial;position:fixed;inset:0;z-index:2147483646;background:#262626;display:block;';
+  const iframe = doc.createElement('iframe');
+  iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts'); // no top navigation, no popups
+  iframe.style.cssText = 'all:initial;position:absolute;top:0;left:' + left + 'px;width:' + width + 'px;height:' + height + 'px;border:0;background:#fff;display:block;';
+  overlay.appendChild(iframe);
+  (doc.body || doc.documentElement).appendChild(overlay);
+  iframe.src = src;
+  return true;
+}
+async function makeFrame(tabId, m) {
+  const [r] = await chrome.scripting.executeScript({
+    target: { tabId }, world: 'MAIN', func: mkFrameMain, args: [m.width, m.left, m.height, m.src]
+  });
+  return { ok: !!(r && r.result) };
 }

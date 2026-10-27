@@ -233,21 +233,28 @@ const raf2 = () => Promise.race([
     if (!mountPoint || typeof mountPoint.appendChild !== 'function' || !/html/i.test(String(doc.documentElement && doc.documentElement.namespaceURI || 'html'))) {
       return { ok: false, reason: 'unsupported' };
     }
-    const overlay = doc.createElement('div');
-    overlay.setAttribute('data-dibino-lens-overlay', '');
-    overlay.style.cssText = 'all:initial;position:fixed;inset:0;z-index:2147483646;background:#262626;display:block;';
-    const iframe = doc.createElement('iframe');
-    iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts'); // no top navigation, no popups
-    iframe.style.cssText = 'all:initial;position:absolute;top:0;left:' + Math.round((vw - width) / 2) + 'px;width:' + width + 'px;height:' + vh + 'px;border:0;background:#fff;display:block;';
-    overlay.appendChild(iframe);
-    try { mountPoint.appendChild(overlay); } catch (e) { return { ok: false, reason: 'unsupported' }; }
+    // The frame is created from the page's own context (background → MAIN world) so Chrome's generic
+    // "allow-scripts + allow-same-origin" console notice is not filed under the extension's error list.
+    // Both flags are needed here: the page must run its own JS at the narrow width and we must read it.
+    let made = null;
+    try {
+      made = await chrome.runtime.sendMessage({
+        type: 'make-frame', width, left: Math.round((vw - width) / 2), height: vh, src: win.location.href
+      });
+    } catch (e) { made = null; }
+    if (!made || !made.ok) return { ok: false, reason: 'unsupported' };
+    const overlay = doc.querySelector('[data-dibino-lens-overlay]');
+    const iframe = overlay && overlay.querySelector('iframe');
+    if (!iframe) return { ok: false, reason: 'unsupported' };
 
-    const loaded = new Promise((res) => {
-      iframe.addEventListener('load', () => res(true), { once: true });
-      setTimeout(() => res(false), 25000);
-    });
-    iframe.src = win.location.href;
-    await loaded;
+    const t0 = Date.now();
+    for (;;) {
+      let cd = null;
+      try { cd = iframe.contentDocument; } catch (e) { cd = null; }
+      if (cd && cd.readyState === 'complete' && cd.URL !== 'about:blank') break;
+      if (Date.now() - t0 > 25000) break;
+      await sleep(120);
+    }
 
     let d = null;
     try { d = iframe.contentDocument; } catch (e) { d = null; }
