@@ -53,6 +53,8 @@ Dibino Lens is not on the Chrome Web Store yet, so for now you install it by han
 3. Click **Load unpacked** and choose this folder.
 4. Pin the extension (puzzle icon → pin) for one-click access.
 
+> Keep the folder where it is: Chrome loads the extension from it. If you move or delete the folder, load it again.
+
 ## Use
 
 1. Open the page you want to analyse and click the **Dibino Lens** icon.
