@@ -46,11 +46,9 @@ dibino-lens_example-com_20261027-0912.zip
 
 ## Install
 
-**From the Chrome Web Store:** search for *Dibino Lens* (link will be added after publishing).
+Dibino Lens is not on the Chrome Web Store yet, so for now you install it by hand (takes one minute). It works in Chrome and other Chromium browsers such as Edge.
 
-**From source (developer mode):**
-
-1. Download or clone this repository.
+1. Click **Code → Download ZIP** on this page and unzip it.
 2. Open `chrome://extensions` and enable **Developer mode**.
 3. Click **Load unpacked** and choose this folder.
 4. Pin the extension (puzzle icon → pin) for one-click access.
