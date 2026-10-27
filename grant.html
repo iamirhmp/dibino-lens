@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Dibino Lens</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff;color:#0a0a0a;font:14px/1.7 system-ui,-apple-system,"Segoe UI",Tahoma,"Noto Sans Arabic",Arial,sans-serif;padding:24px}
+  h1{font-size:17px;margin:0 0 6px}
+  p{margin:0 0 14px;color:#525252}
+  ul{margin:0 0 18px;padding:0;list-style:none;border:1px solid #e5e5e5;border-radius:12px;background:#fafafa;max-height:170px;overflow:auto}
+  li{padding:8px 12px;border-bottom:1px solid #eee;direction:ltr;text-align:left;font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace}
+  li:last-child{border-bottom:0}
+  .row{display:flex;gap:10px}
+  button{flex:1;padding:11px;border-radius:11px;border:1px solid #d4d4d4;background:#fff;font:inherit;font-weight:600;cursor:pointer}
+  button.p{background:#0a0a0a;border-color:#0a0a0a;color:#fff}
+  button:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+  small{display:block;margin-top:14px;color:#737373;font-size:12px}
+</style>
+</head>
+<body>
+  <h1 id="t"></h1>
+  <p id="d"></p>
+  <ul id="l"></ul>
+  <div class="row"><button class="p" id="ok"></button><button id="no"></button></div>
+  <small id="n"></small>
+  <script src="grant.js"></script>
+</body>
+</html>

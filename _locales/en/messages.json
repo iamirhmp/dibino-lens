@@ -1,0 +1,6 @@
+{
+  "extName": { "message": "Dibino Lens – Page Design Extractor" },
+  "extDesc": { "message": "Turn any web page into a clean package for AI: rendered HTML, CSS, design tokens and section screenshots in one ZIP." },
+  "actionTitle": { "message": "Open Dibino Lens" },
+  "restricted": { "message": "Dibino Lens can't run on this page (browser pages, the Web Store and PDF viewers are restricted)." }
+}
