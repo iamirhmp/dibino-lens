@@ -180,6 +180,7 @@
                 family: (r.style.getPropertyValue('font-family') || '').replace(/["']/g, '').trim(),
                 weight: r.style.getPropertyValue('font-weight') || '400',
                 style: r.style.getPropertyValue('font-style') || 'normal',
+                range: r.style.getPropertyValue('unicode-range') || '',
                 urls, css: txt
               });
             }
@@ -535,12 +536,80 @@
       (bgImages || []).forEach((u) => add(u, 'image', 'css background'));
     }
     if (opt.fonts) {
-      for (const f of fontFaces || []) {
+      for (const f of E.usedFontFaces(doc, scope, fontFaces || [])) {
         const pick = f.urls.find((u) => /\.woff2(\?|#|$)/i.test(u)) || f.urls.find((u) => /\.woff(\?|#|$)/i.test(u)) || f.urls[0];
         if (pick) add(pick, 'font', f.family + ' ' + f.weight);
       }
     }
     return list;
+  };
+
+  /* Only the @font-face files that the scope really renders: family + weight + style (+ unicode-range subsets). */
+  E.usedFontFaces = function (doc, scope, faces) {
+    const win = doc.defaultView;
+    const byFam = {};
+    for (const f of faces) (byFam[f.family.toLowerCase()] = byFam[f.family.toLowerCase()] || []).push(f);
+    if (!Object.keys(byFam).length) return [];
+
+    const weightRange = (w) => {
+      const parts = String(w || '400').trim().toLowerCase().split(/\s+/).map((x) => (x === 'normal' ? 400 : x === 'bold' ? 700 : parseFloat(x)));
+      const lo = isNaN(parts[0]) ? 400 : parts[0];
+      return [lo, parts.length > 1 && !isNaN(parts[1]) ? parts[1] : lo];
+    };
+    const parseRanges = (str) => {
+      if (!str) return null;
+      const out = [];
+      str.split(',').forEach((part) => {
+        const m = /U\+([0-9A-Fa-f?]+)(?:-([0-9A-Fa-f]+))?/.exec(part.trim());
+        if (!m) return;
+        if (m[1].includes('?')) out.push([parseInt(m[1].replace(/\?/g, '0'), 16), parseInt(m[1].replace(/\?/g, 'F'), 16)]);
+        else out.push([parseInt(m[1], 16), m[2] ? parseInt(m[2], 16) : parseInt(m[1], 16)]);
+      });
+      return out.length ? out : null;
+    };
+    const hasChar = (ranges, chars) => !ranges || !chars.size || [...chars].some((c) => ranges.some(([a, b]) => c >= a && c <= b));
+
+    const chosen = new Set();
+    const consider = (cs, chars) => {
+      const fams = (cs.fontFamily || '').split(',').map((x) => x.replace(/["']/g, '').trim().toLowerCase());
+      const w = parseFloat(cs.fontWeight) || 400;
+      const italic = /italic|oblique/.test(cs.fontStyle || '');
+      for (const fam of fams) {
+        const list = byFam[fam];
+        if (!list) continue;
+        let cand = list.filter((f) => /italic|oblique/.test(f.style) === italic);
+        if (!cand.length) cand = list;
+        let best = Infinity;
+        const dist = (f) => { const [lo, hi] = weightRange(f.weight); return w >= lo && w <= hi ? 0 : Math.min(Math.abs(w - lo), Math.abs(w - hi)); };
+        cand.forEach((f) => { best = Math.min(best, dist(f)); });
+        cand.filter((f) => dist(f) === best).forEach((f) => { if (hasChar(parseRanges(f.range), chars)) chosen.add(f); });
+        break; // the first family that exists as a web font wins
+      }
+    };
+
+    let n = 0;
+    const els = [scope, ...scope.querySelectorAll('*')];
+    for (const el of els) {
+      if (++n > 6000) break;
+      if (/^(SCRIPT|STYLE|NOSCRIPT|TEMPLATE|META|LINK)$/.test(el.tagName)) continue;
+      let cs;
+      try { cs = win.getComputedStyle(el); } catch (e) { continue; }
+      if (cs.display === 'none') continue;
+      const chars = new Set();
+      for (const node of el.childNodes) if (node.nodeType === 3) for (const ch of node.nodeValue.replace(/\s+/g, '')) chars.add(ch.codePointAt(0));
+      if (chars.size) consider(cs, chars);
+      for (const pseudo of ['::before', '::after']) {
+        let ps;
+        try { ps = win.getComputedStyle(el, pseudo); } catch (e) { continue; }
+        const c = ps && ps.content;
+        if (c && c !== 'none' && c !== 'normal' && c !== '""') {
+          const pc = new Set();
+          for (const ch of c.replace(/^["']|["']$/g, '').replace(/\\([0-9a-fA-F]{1,6})\s?/g, (m, h) => String.fromCodePoint(parseInt(h, 16)))) pc.add(ch.codePointAt(0));
+          consider(ps, pc);
+        }
+      }
+    }
+    return faces.filter((f) => chosen.has(f));
   };
 
   E.imageList = function (doc, scope) {
